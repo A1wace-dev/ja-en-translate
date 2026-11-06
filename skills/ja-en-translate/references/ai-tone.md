@@ -89,6 +89,7 @@ Each lint rule applies at full strength (`strict`), at one severity level lower 
 | `ja-cta` | strict | relaxed | strict | strict | strict | skip | skip | strict |
 | `ja-dash` | strict | strict | strict | strict | relaxed | strict | skip | skip |
 | `ja-dekiru` | strict | strict | strict | relaxed | strict | strict | strict | strict |
+| `ja-halfwidth-punct` | strict | strict | relaxed | strict | strict | strict | strict | strict |
 | `ja-inflated` | strict | strict | strict | strict | strict | relaxed | strict | strict |
 | `ja-long-sentence` | strict | strict | strict | relaxed | relaxed | strict | strict | strict |
 | `ja-mixed-style` | strict | strict | strict | strict | skip | strict | relaxed | strict |

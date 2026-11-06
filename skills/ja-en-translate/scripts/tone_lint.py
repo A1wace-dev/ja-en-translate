@@ -36,7 +36,7 @@ JA_RULES = [
      r"(と言えるでしょう|ではないでしょうか|と言っても過言ではありません|と言っても過言ではない|これこそが[^。]{1,20})。",
      "Closing flourish. Keep only if the source ends this way."),
     ("ja-inflated", "ai-tone", "medium",
-     r"重要な役割を果たし|欠かせない存在|鍵を握|鍵となる|大きな転換点|新たな可能性を(切り|拓)|象徴と言え|画期的な|革新的な",
+     r"重要な役割を果た[しす]|欠かせない存在|鍵を握|鍵となる|大きな転換点|新たな可能性を(切り|拓)|象徴と言え|画期的な|革新的な",
      "Inflated significance. Match the source's actual strength."),
     ("ja-stock-word", "ai-tone", "low",
      r"さまざまな|様々な|多様な|包括的な|シームレスな|において|を通じて|に関して",
@@ -54,8 +54,8 @@ JA_RULES = [
      r"となっています|となっている",
      "〜となっている where no change of state is meant → 〜だ / 〜です"),
     ("ja-no-chain", "translationese", "medium",
-     r"[^\s。、「」]{1,8}の[^\s。、「」]{1,8}の[^\s。、「」]{1,8}の",
-     "Three or more の in a row; restructure."),
+     r"[^\s。、「」]{1,8}の[^\s。、「」]{1,8}の[^\s。、「」]{1,8}の[^\s。、「」]{1,8}の(?![でにはがをもか])",
+     "Four or more の in a row; restructure (calibrated: three is common in human text)."),
     ("ja-pronoun", "translationese", "medium",
      r"あなたは|あなたが|あなたの|彼女は|彼女が|彼は|彼が",
      "Pronoun likely calqued from English; use a name, a role, or omit."),
@@ -74,7 +74,7 @@ JA_RULES = [
 
 EN_RULES = [
     ("en-chat-residue", "ai-tone", "high",
-     r"(?i)\b(I hope this helps|here is the translation|let me know if|feel free to)\b",
+     r"(?i)\b(I hope this helps|here is the translation|here'?s the translation|great question|as an AI( language model)?|I'd be happy to help)\b",
      "Chatbot residue; never belongs in the output."),
     ("en-staged-contrast", "ai-tone", "medium",
      r"(?i)\bnot (just|only|merely) [^.]{1,60}?\bbut\b|\bit'?s not [^.]{1,40}?, it'?s\b",
@@ -126,6 +126,7 @@ TOLERANCE = {
     "ja-okonau": {"academic": "relaxed", "technical": "skip", "official": "skip"},
     "ja-natteiru": {"business": "relaxed", "official": "skip"},
     "ja-no-chain": {"official": "relaxed"},
+    "ja-halfwidth-punct": {"technical": "relaxed"},
     "ja-pronoun": {"literary": "relaxed"},
     "ja-dash": {"literary": "relaxed", "casual": "skip", "subtitle": "skip"},
     "en-dash": {"literary": "relaxed", "casual": "skip"},
@@ -190,6 +191,53 @@ def prose_lines(text):
         yield i, line, clean
 
 
+# When a finding has a counterpart in the source, the translation is following the source
+# (guard rule in ai-tone.md), not adding AI tone. Patterns are matched in the source paragraph
+# aligned with the finding's paragraph.
+SOURCE_COUNTERPART = {
+    "en-staged-contrast": r"ではなく|だけでなく|のみならず|だけではなく|というより",
+    "ja-staged-contrast": r"(?i)\bnot (just|only|merely|simply)\b|\brather than\b|\binstead of\b",
+    "ja-closer": r"(?i)\b(it can be said|arguably|isn't it|is it not|indeed)\b",
+    "en-inflated": r"重要な役割|鍵|欠かせない|画期的|決定的|大きな意味",
+    "ja-inflated": r"(?i)\b(pivotal|crucial|key role|vital|groundbreaking|landmark|testament)\b",
+    "ja-cta": r"(?i)\b(please|be sure to|don't miss|try)\b",
+    "en-dash": r"――|—|―",
+    "ja-dash": r"—|–| -- ",
+}
+
+
+def mark_source_counterparts(findings, text, source):
+    """Lower findings to 'low' and tag them when the aligned source paragraph has the same move."""
+    def paras_with_lines(t):
+        out, start, buf = [], None, []
+        for i, line in enumerate(t.splitlines(), 1):
+            if line.strip():
+                start = start or i
+                buf.append(line)
+            elif buf:
+                out.append((start, i - 1, "\n".join(buf)))
+                start, buf = None, []
+        if buf:
+            out.append((start, len(t.splitlines()), "\n".join(buf)))
+        return out
+    tp, sp = paras_with_lines(text), paras_with_lines(source)
+    aligned = len(tp) == len(sp)
+    for f in findings:
+        rx = SOURCE_COUNTERPART.get(f["rule"])
+        if not rx:
+            continue
+        scope = source
+        if aligned:
+            idx = next((k for k, (a, b, _) in enumerate(tp) if a <= f["line"] <= b), None)
+            if idx is not None:
+                scope = sp[idx][2]
+        if re.search(rx, scope):
+            f["severity"] = "low"
+            f["in_source"] = True
+            f["hint"] = "Source has the same move; keep under guard. " + f["hint"]
+    return findings
+
+
 def detect_lang(text):
     ja = len(JA_CHAR.findall(text))
     en = sum(1 for c in text if c.isascii() and c.isalpha())
@@ -209,7 +257,7 @@ def split_ja_sentences(lines):
     return out
 
 
-def lint(text, lang="auto", context=None):
+def lint(text, lang="auto", context=None, source=None):
     if lang == "auto":
         lang = detect_lang(text)
     rules = (JA_RULES if lang == "ja" else EN_RULES) + COMMON_RULES
@@ -263,6 +311,8 @@ def lint(text, lang="auto", context=None):
                                              "with 。 (〜は次のとおりです。) or use a noun label."})
 
     findings = apply_tolerance(findings, context)
+    if source:
+        findings = mark_source_counterparts(findings, text, source)
 
     # Density rules: low-severity hits only matter when frequent
     size = max(len(text), 1000)  # short texts are not penalized for a single hit
@@ -271,10 +321,10 @@ def lint(text, lang="auto", context=None):
         if f["severity"] == "low":
             per_k[f["rule"]] = per_k.get(f["rule"], 0) + 1
     dense = {r for r, n in per_k.items() if n * 1000 / size >= (6 if lang == "ja" else 3)}
-    findings = [f for f in findings if f["severity"] != "low" or f["rule"] in dense]
+    findings = [f for f in findings if f["severity"] != "low" or f["rule"] in dense or f.get("in_source")]
 
     weights = {"high": 8, "medium": 3, "low": 1}
-    penalty = sum(weights[f["severity"]] for f in findings) * 1000 / max(size, 1000)
+    penalty = sum(weights[f["severity"]] for f in findings if not f.get("in_source")) * 1000 / max(size, 1000)
     score = max(0, round(100 - penalty))
     findings.sort(key=lambda f: (f["line"], f["rule"]))
     return {"language": lang, "context": context, "score": score,
@@ -288,6 +338,7 @@ def main():
     ap.add_argument("--print-matrix", action="store_true", help="Print the context tolerance table as Markdown")
     ap.add_argument("--lang", choices=["ja", "en", "auto"], default="auto")
     ap.add_argument("--context")
+    ap.add_argument("--source", type=Path, help="Source file: findings the source itself has are tagged in_source")
     ap.add_argument("--format", choices=["json", "text"], default="json")
     a = ap.parse_args()
     if a.print_matrix:
@@ -295,13 +346,15 @@ def main():
         return
     if a.file is None or not a.file.is_file():
         sys.exit(f"File not found: {a.file}")
-    r = lint(a.file.read_text(encoding="utf-8"), a.lang, a.context)
+    src = a.source.read_text(encoding="utf-8") if a.source else None
+    r = lint(a.file.read_text(encoding="utf-8"), a.lang, a.context, src)
     if a.format == "json":
         print(json.dumps(r, ensure_ascii=False, indent=2))
     else:
         print(f"language={r['language']} score={r['score']} counts={r['counts']}")
         for f in r["findings"]:
-            print(f"L{f['line']:>4} [{f['severity']}] {f['rule']}: {f['match']}  ({f['hint']})")
+            tag = " (in source)" if f.get("in_source") else ""
+            print(f"L{f['line']:>4} [{f['severity']}]{tag} {f['rule']}: {f['match']}  ({f['hint']})")
 
 
 if __name__ == "__main__":

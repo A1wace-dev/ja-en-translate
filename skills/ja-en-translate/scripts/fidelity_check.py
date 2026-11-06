@@ -23,7 +23,7 @@ from collections import Counter
 from pathlib import Path
 
 FENCE = re.compile(r"^\s*(```|~~~)")
-URL = re.compile(r"https?://[^\s)>\]」』]+")
+URL = re.compile(r"https?://[^\s)>\]」』`]+?(?=[.,;:!?、。]*(?:[\s)>\]」』`]|$))")
 INLINE_CODE = re.compile(r"`[^`\n]+`")
 LINK_TARGET = re.compile(r"\]\(([^)\s]+)")
 FOOTNOTE = re.compile(r"\[\^[^\]]+\]")
@@ -32,11 +32,27 @@ LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s", re.M)
 
 FW = str.maketrans("０１２３４５６７８９．，％", "0123456789.,%")
 KANJI_DIGIT = {"〇": 0, "一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+EN_WORD_NUM = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9,
+               "ten": 10, "eleven": 11, "twelve": 12, "twenty": 20, "hundred": 100}
 EN_SCALE = {"thousand": 1e3, "million": 1e6, "billion": 1e9, "trillion": 1e12}
 
+# Grammatical negation only. Lexical negation (不/非/未/無, un-/non-) is skipped because
+# the two languages often express it differently (未知 = "unknown", no "not").
 NEG_JA = re.compile(
-    r"(?<![少危汚幼切])な(い|かった|く(?!て)|しで)|ません|ませんでした|ず[、。にとも]|ぬ[。、]|"
-    r"(?<![一-鿿])(不|非|未|無)[一-鿿]")
+    r"(?<![少危汚幼切])な(い(?!し)|かった|く(?!て)|しで)|ません|ませんでした|ず[、。にとも]|ぬ[。、]")
+# Forms that contain ない but are not negation: obligation, possibility, conjecture
+NEG_JA_FALSE = re.compile(
+    r"(?:なければ|なくては|ないと|ねば)(?:なら|なり|いけ)(?:ない|ず|ぬ|なかった|ません(?:でした)?)|"
+    r"(?:かもしれ|かも知れ|に違い|に他なら|かね|しか|ほか|ざるを得)(?:ない|ません|ず)|"
+    r"ではないでしょうか|ではないか|じゃないか|"
+    # Contrastive "not A but B" negates a framing, not the predicate; counting it would let an
+    # added contrast hide a lost negation elsewhere
+    r"(?:では|じゃ|だけで|のみで|ばかりで)なく")
+NEG_EN_FALSE = re.compile(r"(?i)\bnot (?:just|only|merely|simply)\b|\bno longer than\b|\bnot to mention\b")
+# Wider net used only to ask "does the output express negation at all?": conditional and
+# lexical forms a translator may legitimately use for a source "not".
+NEG_JA_WIDE = re.compile(r"なけれ|なくて|ないと|以外|未満|以下|満たず|めったに|ほとんど|わずか|未[\u4E00-\u9FFF]|不[\u4E00-\u9FFF]|非[\u4E00-\u9FFF]|無[\u4E00-\u9FFF]|ぬき|抜き|欠")
+NEG_EN_WIDE = re.compile(r"(?i)\b(fewer than|less than|below|at most|hardly|barely|rarely|seldom|unless|except|other than|instead of|fails? to|lacks?|absent|missing|un[a-z]{3,}|non-?[a-z]{3,}|in(?:valid|correct|complete|active|compatible))\b")
 NEG_EN = re.compile(r"(?i)\b(not|no|never|none|nobody|nothing|neither|nor|without|cannot)\b|n't\b")
 
 
@@ -103,10 +119,13 @@ def numbers(text):
                 v *= EN_SCALE[sm.group(1)]
             vals.append(v)
     # Kanji numerals followed by a counter (三人, 十二月, 二十五年)
-    for m in re.finditer(r"([〇一二三四五六七八九十百千]+)(?=[人件年月日回歳つ個名社校万億%パ])", text):
+    for m in re.finditer(r"([〇一二三四五六七八九十百千]+)(?=[人件年月日回歳つ個名社校%パ週時分秒倍冊枚台か])", text):
         k = kanji_number(m.group(1))
-        if k is not None and m.group(1) not in {"一"}:
+        if k is not None:
             vals.append(float(k))
+    # "one" only before a unit ("one-week", "one hour"); elsewhere it is usually a pronoun
+    for m in re.finditer(r"(?i)\bone[- ](?=(?:week|day|month|year|hour|minute|second|time|page|person|item)s?\b)", t):
+        vals.append(1.0)
     return Counter(round(v, 4) for v in vals)
 
 
@@ -125,13 +144,31 @@ def tables(prose):
     return out
 
 
+def word_numbers(text):
+    """English number words. They satisfy digits on the other side ("2つの教室" → "two classes",
+    "three" → 3回) but are never required, because translators also render them as 両方, 数個, etc."""
+    return {float(EN_WORD_NUM[m.group(1).lower()]) for m in re.finditer(
+        r"(?i)\b(two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|hundred)\b", text)}
+
+
 def paragraphs(prose):
     return [p.strip() for p in re.split(r"\n\s*\n", prose) if p.strip()]
 
 
+def expresses_negation(text, lang):
+    """True if the text contains grammatical or lexical/conditional negation."""
+    if negations(text, lang):
+        return True
+    text = INLINE_CODE.sub(" ", text)
+    return bool((NEG_JA_WIDE if lang == "ja" else NEG_EN_WIDE).search(text))
+
+
 def negations(text, lang):
-    rx = NEG_JA if lang == "ja" else NEG_EN
-    return len(rx.findall(text))
+    text = INLINE_CODE.sub(" ", text)
+    if lang == "ja":
+        text = NEG_JA_FALSE.sub(" ", text)
+        return len(NEG_JA.findall(text))
+    return len(NEG_EN.findall(NEG_EN_FALSE.sub(" ", text)))
 
 
 def lang_of(text):
@@ -170,17 +207,29 @@ def check(src_text, out_text, mode="translate"):
             if code_core(a) != code_core(b):
                 add("high", "code-changed", "Code changed (outside comments).", f"code block {i}")
 
+    def identifier_like(tok):
+        inner = tok.strip("`")
+        return bool(inner) and " " not in inner and not re.search(r"[\u3040-\u30FF\u4E00-\u9FFF]", inner)
+
     for name, rx in [("urls", URL), ("inline-code", INLINE_CODE),
                      ("link-targets", LINK_TARGET), ("footnotes", FOOTNOTE)]:
-        a, b = Counter(rx.findall(s_prose)), Counter(rx.findall(o_prose))
-        missing, extra = a - b, b - a
-        if name == "inline-code" and mode == "translate":
-            # Identifiers must survive; translated prose in backticks is rare
-            pass
+        a, b = set(rx.findall(s_prose)), set(rx.findall(o_prose))
+        missing, extra = sorted(a - b), sorted(b - a)
+        if name == "inline-code":
+            # Identifiers (no spaces, no Japanese) must survive; a phrase in backticks may be translated
+            hard = [t for t in missing if identifier_like(t)]
+            soft = [t for t in missing if not identifier_like(t)]
+            if hard:
+                add("high", name, "Missing in output: " + ", ".join(hard[:8]))
+            if soft:
+                add("low", name, "Phrase in backticks not found verbatim (translated?): " + ", ".join(soft[:8]))
+            if extra:
+                add("medium", name, "Not in source: " + ", ".join(extra[:8]))
+            continue
         if missing:
-            add("high", name, "Missing in output: " + ", ".join(list(missing)[:8]))
+            add("high", name, "Missing in output: " + ", ".join(missing[:8]))
         if extra:
-            add("medium", name, "Not in source: " + ", ".join(list(extra)[:8]))
+            add("medium", name, "Not in source: " + ", ".join(extra[:8]))
 
     for name, rx in [("headings", HEADING), ("list-items", LIST_ITEM)]:
         a, b = len(rx.findall(s_prose)), len(rx.findall(o_prose))
@@ -201,28 +250,45 @@ def check(src_text, out_text, mode="translate"):
 
     # Numbers: whole document
     sn, on = numbers(s_prose), numbers(o_prose)
-    miss, extra = sn - on, on - sn
-    if miss:
-        add("high", "numbers", "In source, not found in output: " + ", ".join(fmt_num(v) for v in sorted(miss.elements())))
-    if extra:
-        add("medium", "numbers", "In output, not in source: " + ", ".join(fmt_num(v) for v in sorted(extra.elements())))
+    gone = set(sn) - set(on) - word_numbers(o_prose)
+    new = set(on) - set(sn) - word_numbers(s_prose)
+    if gone:
+        add("high", "numbers", "In source, not found in output: " + ", ".join(fmt_num(v) for v in sorted(gone)))
+    if new:
+        add("medium", "numbers", "In output, not in source: " + ", ".join(fmt_num(v) for v in sorted(new)))
+    recount = [v for v in set(sn) & set(on) if sn[v] != on[v]]
+    if recount:
+        add("low", "number-count", "Same value, different number of mentions (often a pronoun such as それ): "
+            + ", ".join(fmt_num(v) for v in sorted(recount)))
 
     # Paragraph-level checks when the structure lines up
     sp, op = paragraphs(s_prose), paragraphs(o_prose)
     aligned = len(sp) == len(op)
     if not aligned:
         add("low", "paragraphs", f"{len(sp)} paragraphs in source, {len(op)} in output; "
-            "paragraph-level checks skipped.")
+            "negation is compared for the whole document instead of per paragraph.")
+        # Letters and emails gain or lose greeting paragraphs, so compare totals instead
+        ga, gb = negations(s_prose, s_lang), negations(o_prose, o_lang)
+        if ga and not expresses_negation(o_prose, o_lang):
+            add("high", "negation", f"Source has {ga} negation(s), output has none; check polarity.")
+        elif ga > gb:
+            add("medium", "negation", f"Source has {ga} negation(s), output has {gb}; find the one that was "
+                "lost or rephrased.")
     else:
         for i, (a, b) in enumerate(zip(sp, op), 1):
-            na, nb = numbers(a), numbers(b)
-            if na != nb and (na - nb):
+            gone = set(numbers(a)) - set(numbers(b)) - word_numbers(b)
+            if gone:
                 add("high", "numbers-paragraph",
-                    "Numbers differ: " + ", ".join(fmt_num(v) for v in sorted((na - nb).elements())), f"paragraph {i}")
+                    "Numbers missing: " + ", ".join(fmt_num(v) for v in sorted(gone)), f"paragraph {i}")
             ga, gb = negations(a, s_lang), negations(b, o_lang)
-            if (ga == 0) != (gb == 0) or (mode == "rewrite" and ga != gb):
-                add("medium", "negation", f"Negation count {ga} in source, {gb} in output; check polarity.",
+            if ga and not gb and not expresses_negation(b, o_lang):
+                add("medium", "negation", f"Source has {ga} negation(s), output has none; check polarity.",
                     f"paragraph {i}")
+            elif gb and not ga and not expresses_negation(a, s_lang):
+                add("low", "negation-added", f"Output has {gb} negation(s), source has none; usually a "
+                    "rephrasing (e.g. 'only' → 〜しか〜ない), check if unsure.", f"paragraph {i}")
+            elif mode == "rewrite" and ga != gb:
+                add("medium", "negation", f"Negation count {ga} → {gb}; check polarity.", f"paragraph {i}")
 
     # Rewrite mode: same language, so names and Latin terms should survive
     if mode == "rewrite":

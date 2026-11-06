@@ -82,6 +82,7 @@ Flags are optional. Most requests arrive as plain sentences in Chinese, Japanese
 | Japanese style | Explicit request | "用敬体/です・ます", "だ・である調で", "常体" → `ja_style` |
 | English variant | Explicit request | "英式英语", "British spelling", "イギリス英語" → `en_variant: UK` |
 | AI tone | Request to remove AI flavor | "去掉AI味", "不要像AI写的", "AIっぽさを消して", "make it sound less AI" → `humanize: rewrite` |
+| Voice | The user wants the result to sound like their own writing | "照我的文风", "用我平时的写法", 「私の文体に合わせて」, "match my writing sample", or a pasted sample → use the sample (see Voice Samples) |
 | Notes | Explicit request | "不要加注释", "訳注なしで", "no translator's notes" → `notes: none` |
 
 **When the request and the text disagree,** the request wins for purpose and audience (a casual-sounding source that the user says is "for my report" is translated as `academic`), and the text wins for facts about itself (genre, existing formatting).
@@ -215,17 +216,17 @@ Direction checklists — load the one for the current direction:
 Detect context silently, translate, save `translation.md`. No analysis file. Apply the context profile's core stance and the universal principles, then scan the output once for AI-tone items 1–6 of the target language (references/ai-tone.md). If the source contains numbers, URLs, code, or tables, also run `fidelity_check.py`. In quick mode act only on high-severity lint findings.
 
 #### Normal
-1. **Analyze** → `01-analysis.md`: direction; context(s) with evidence; audience; 文体 / keigo / English variant; terms and decisions; names; implicit elements that had to be resolved (subject, number, tense); cultural items; challenges.
+1. **Analyze** → `01-analysis.md`: direction; context(s) with evidence; audience; 文体 / keigo / English variant; terms and decisions; names; implicit elements that had to be resolved (subject, number, tense); sentences whose type is at risk (hearsay such as 〜とされる, hedges, requests inside quotations); cultural items; challenges.
 2. **Brief** → `02-prompt.md`.
 3. **Translate** → `translation.md`. Uncertain spots get a `<!-- TN: … -->` comment while drafting; before saving, remove them and carry the questions to "Please confirm" in the summary.
-4. **Check.** Run `fidelity_check.py <source> translation.md` and `tone_lint.py translation.md --context <context>`. Fix every high fidelity finding, or explain it in the summary (e.g., 30,000 → 3万 is fine). Triage lint findings against the source: fix what the translation added, keep what the source has (references/ai-tone.md, guard rule).
+4. **Check.** Run `fidelity_check.py <source> translation.md` and `tone_lint.py translation.md --context <context> --source <source>`. With `--source`, findings whose move the source itself makes (a real 〜ではなく contrast, say) are tagged `in_source` and lowered. Fix every high fidelity finding, or explain it in the summary (e.g., 30,000 → 3万 is fine). Triage lint findings against the source: fix what the translation added, keep what the source has (references/ai-tone.md, guard rule).
 
 #### Refined
 Steps and files: see references/refined-workflow.md.
 1. Analyze → `01-analysis.md`
 2. Brief → `02-prompt.md`
 3. Draft → `03-draft.md`
-4. Critique → `04-critique.md` (diagnosis only: accuracy, context fit, direction-specific pitfalls, register consistency, terminology, AI tone). Run `fidelity_check.py` and `tone_lint.py` on `03-draft.md` first and use their output as input to sections A and G.
+4. Critique → `04-critique.md` (diagnosis only: accuracy, context fit, direction-specific pitfalls, register consistency, terminology, AI tone). Run `fidelity_check.py` and `tone_lint.py --source <source>` on `03-draft.md` first and use their output as input to sections A and G.
 5. Revise → `05-revision.md`
 6. Polish → `translation.md` (read as a native reader of the target in that context; final 表記 / style pass), then re-run both scripts on `translation.md`: no high fidelity finding may remain unexplained.
 
@@ -257,6 +258,16 @@ Verification
 ```
 
 Never call a check passed if it did not run. A clean script result means no mechanical mismatch was found, not that the meaning was verified.
+
+## Voice Samples
+
+When the user translates their own writing (a report, an email, an essay), the output should sound like them, not like a generic translator. A voice sample is a passage the user wrote **in the target language**: pasted in the request, or listed in EXTEND.md `voice_samples` (paths per language).
+
+When a sample applies:
+- Read it before drafting. Note sentence length, how sentences open and connect, word choices, punctuation habits (dashes, 体言止め, parentheses), and 文体 / contractions. Record these in `01-analysis.md` under "Voice".
+- Match those habits in the translation. A habit in the sample overrides the AI-tone defaults: if the user writes with dashes, dashes are allowed at about their rate.
+- The sample shapes **how** things are said, never **what**: no facts, examples, phrases, or opinions are copied from it, and the context profile still sets the register (a casual sample does not make an academic report casual).
+- Apply it only to text the user wrote or will send as themselves, and only for the language of the sample. Never apply a user's voice to someone else's text.
 
 ## Japanese Polish
 

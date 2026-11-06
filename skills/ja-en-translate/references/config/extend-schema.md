@@ -26,6 +26,11 @@ notes: auto                  # auto (by context) | none | inline | footnote
 # --- AI tone ---
 humanize: guard              # guard (never add AI tone) | rewrite (also tone down AI tone in the source) | off
 
+# --- Voice samples (your own writing, used to match your style) ---
+voice_samples:
+  en: [samples/my-english-essay.md]     # paths relative to this EXTEND.md
+  ja: [samples/my-report-ja.md]
+
 # --- Glossaries ---
 glossary:                    # inline entries; highest priority after --glossary
   - ja: 共生

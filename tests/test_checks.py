@@ -83,6 +83,22 @@ class ToneLintNewRules(unittest.TestCase):
         self.assertEqual(doc[start:end].strip(), tone.matrix_markdown().strip())
 
 
+class ToneLintSource(unittest.TestCase):
+    def test_contrast_in_source_is_tagged(self):
+        src = "教室は言葉を学ぶ場所としてだけでなく、知り合う場所としても使われている。\n"
+        out = "The classes are used not only as a place to learn but also as a place to meet people.\n"
+        r = tone.lint(out, "en", None, src)
+        f = [x for x in r["findings"] if x["rule"] == "en-staged-contrast"][0]
+        self.assertTrue(f.get("in_source"))
+        self.assertEqual(r["score"], 100)
+
+    def test_added_contrast_stays(self):
+        src = "教室は言葉を学ぶ場所として使われている。\n"
+        out = "The classes are not just a place to learn, but a vibrant hub of community life.\n"
+        f = [x for x in tone.lint(out, "en", None, src)["findings"] if x["rule"] == "en-staged-contrast"][0]
+        self.assertFalse(f.get("in_source", False))
+
+
 class ToneLintEnglish(unittest.TestCase):
     def test_flags_ai_patterns(self):
         text = ("Classes are not just places to learn, but they play a crucial role, "
@@ -141,6 +157,27 @@ class FidelityCheck(unittest.TestCase):
         found = rules(fid.check(src, bad))
         self.assertIn("table-shape", found)
         self.assertIn("table-numbers", found)
+
+    def test_number_words_satisfy_digits(self):
+        r = fid.check("本調査は2つの教室のみを対象とした。\n", "This study covers only two classes.\n")
+        self.assertNotIn("numbers", rules(r))
+
+    def test_one_with_unit(self):
+        r = fid.check("Could I get a one-week extension?\n", "2週間延長していただけますか。\n")
+        self.assertEqual([f["severity"] for f in r["findings"] if f["rule"] == "numbers"][0], "high")
+        self.assertNotIn("numbers", rules(fid.check("Could I get a one-week extension?\n", "一週間延長していただけますか。\n")))
+
+    def test_unaligned_negation_compared_for_document(self):
+        src = "Hi,\n\nI have not finished the analysis.\n\nBest,\nYuki\n"
+        bad = "先生\n\nお世話になっております。\n\n単なる遅れではなく、分析が終わりました。\n\nYuki\n"
+        good = "先生\n\nお世話になっております。\n\n分析がまだ終わっておりません。\n\nYuki\n"
+        self.assertIn("negation", rules(fid.check(src, bad)))
+        self.assertNotIn("negation", rules(fid.check(src, good)))
+
+    def test_obligation_and_comparatives_are_not_lost_negation(self):
+        self.assertEqual(fid.negations("一致していなければなりません。", "ja"), 0)
+        r = fid.check("通っているのは5%に満たない。\n", "Fewer than 5% attend.\n")
+        self.assertNotIn("negation", rules(r))
 
     def test_rewrite_mode_terms(self):
         r = fid.check("Claude Code を使って検討を行った。\n", "検討した。\n", "rewrite")
