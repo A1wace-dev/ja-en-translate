@@ -52,6 +52,37 @@ class ToneLintJapanese(unittest.TestCase):
         self.assertEqual(tone.lint(text, "ja")["findings"], [])
 
 
+class ToneLintNewRules(unittest.TestCase):
+    def test_bold_not_rendered(self):
+        self.assertIn("bold-not-rendered", rules(tone.lint("次に**「立場」**を決める。\n", "ja")))
+        self.assertNotIn("bold-not-rendered", rules(tone.lint("次に「**立場**」を決める。\n", "ja")))
+        self.assertIn("bold-not-rendered", rules(tone.lint("これは**必須です。**詳しくは下。\n", "ja")))
+
+    def test_colon_before_list(self):
+        text = "設定は次のとおりです：\n\n- A\n- B\n\n日時：10時\n"
+        found = [f for f in tone.lint(text, "ja")["findings"] if f["rule"] == "ja-colon-list"]
+        self.assertEqual(len(found), 1)
+
+    def test_pause_comma_is_density_based(self):
+        one = "本稿は、地域の教室を扱う。教室には毎週人が集まる。授業のあとに話す時間もある。\n" * 3
+        dense = "本稿は、教室を扱う。資料を、配る。人は、集まる。会は、続く。私は、行く。彼らも、来る。冬は、寒い。\n"
+        self.assertNotIn("ja-pause-comma", rules(tone.lint(one, "ja")))
+        self.assertIn("ja-pause-comma", rules(tone.lint(dense, "ja")))
+
+    def test_tolerance_skip_and_relax(self):
+        text = "新商品が登場！ぜひお試しください🎉\n"
+        self.assertNotIn("ja-cta", rules(tone.lint(text, "ja", "marketing")))
+        relaxed = tone.apply_tolerance([{"rule": "ja-cta", "severity": "medium"}], "business")
+        self.assertEqual(relaxed[0]["severity"], "low")
+        self.assertIn("ja-cta", rules(tone.lint(text, "ja")))
+
+    def test_matrix_in_docs_matches_code(self):
+        doc = (SCRIPTS.parent / "references" / "ai-tone.md").read_text(encoding="utf-8")
+        start = doc.index("<!-- tolerance-matrix:start -->") + len("<!-- tolerance-matrix:start -->")
+        end = doc.index("<!-- tolerance-matrix:end -->")
+        self.assertEqual(doc[start:end].strip(), tone.matrix_markdown().strip())
+
+
 class ToneLintEnglish(unittest.TestCase):
     def test_flags_ai_patterns(self):
         text = ("Classes are not just places to learn, but they play a crucial role, "
@@ -101,6 +132,15 @@ class FidelityCheck(unittest.TestCase):
         out = "```python\nx = 1  # headcount\n```\n"
         self.assertNotIn("code-changed", rules(fid.check(src, out)))
         self.assertIn("code-changed", rules(fid.check(src, "```python\nx = 2  # headcount\n```\n")))
+
+    def test_tables(self):
+        src = "| 項目 | 値 |\n|---|---|\n| 人数 | 3万 |\n| 割合 | 45% |\n"
+        good = "| Item | Value |\n|---|---|\n| People | 30,000 |\n| Share | 45% |\n"
+        bad = "| Item | Value |\n|---|---|\n| People | 3,000 |\n"
+        self.assertEqual(fid.check(src, good)["counts"]["high"], 0)
+        found = rules(fid.check(src, bad))
+        self.assertIn("table-shape", found)
+        self.assertIn("table-numbers", found)
 
     def test_rewrite_mode_terms(self):
         r = fid.check("Claude Code を使って検討を行った。\n", "検討した。\n", "rewrite")

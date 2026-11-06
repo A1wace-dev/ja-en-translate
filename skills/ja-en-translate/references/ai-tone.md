@@ -49,6 +49,59 @@ LLM-generated Japanese has its own voice. Strongest first.
 9. **〜することができます / 〜となっています / 〜を行います.** Also translationese; see en-to-ja-pitfalls.md §5.
 10. **見出しの飾り.** 【】 or emoji on every heading, bold on every list label. Follow the source.
 
+## Never inject
+
+Removing AI tone has its own failure mode: the editor swaps one stock voice for another ("humanizer voice"). None of the following may be **added** by a translation, a `humanize: rewrite` pass, or a Japanese polish, unless the source already has it. Each is an error even if the lint score improves.
+
+| Do not add | English examples | Japanese examples |
+|---|---|---|
+| A speaker, experience, or reaction the source lacks | "In my experience", "I'll admit", "I was surprised" | 「私の経験では」「正直驚いた」、原文にない「私は」 |
+| Manufactured stakes or urgency | "now more than ever", "the stakes have never been higher" | 「今こそ」「待ったなしだ」 |
+| A contrast with a position nobody stated | "Most people think X, but…" | 「よく〜と言われるが、実は」 |
+| Performed candor | "Let's be honest", "Here's the thing" | 「正直に言うと」「ぶっちゃけ」 |
+| Dramatic punctuation | em dashes for effect | ――、！の追加 |
+| Staccato rhythm | chopping a normal sentence into fragments | 体言止めや短文の連打で作ったリズム |
+| Invented specifics | a number, name, date, tool, or example not in the source | 原文にない数値・固有名詞・具体例 |
+
+The test for each edit: did its information and stance come from the source (or an explicit user correction)? If a sentence would read better with a detail the source does not give, leave it vague and note the gap; never fill it.
+
+## Signals, not proof
+
+`tone_lint.py` scores and these lists measure *writing quality*, not authorship. The same patterns appear in human writing under deadline, in a second language, and in genres that compress vocabulary. Never present a score or a list of findings as evidence that someone used AI.
+
+## Context tolerance
+
+Each lint rule applies at full strength (`strict`), at one severity level lower (`relaxed`), or not at all (`skip`) depending on the context. The table is generated from `TOLERANCE` in `scripts/tone_lint.py` (`tone_lint.py --print-matrix`); rules not listed are strict everywhere.
+
+<!-- tolerance-matrix:start -->
+| Rule | academic | business | technical | official | literary | marketing | casual | subtitle |
+|---|---|---|---|---|---|---|---|---|
+| `bold-label` | strict | strict | skip | strict | strict | strict | strict | skip |
+| `emoji` | strict | strict | strict | strict | strict | skip | skip | strict |
+| `en-copula-avoid` | strict | strict | strict | strict | strict | relaxed | strict | strict |
+| `en-dash` | strict | strict | strict | strict | relaxed | strict | skip | strict |
+| `en-inflated` | strict | strict | strict | strict | strict | relaxed | strict | strict |
+| `en-ing-rider` | strict | strict | strict | strict | strict | relaxed | strict | strict |
+| `en-staged-contrast` | strict | strict | strict | strict | relaxed | relaxed | strict | strict |
+| `en-stock-word` | strict | strict | relaxed | strict | strict | skip | strict | strict |
+| `ja-closer` | strict | strict | strict | strict | relaxed | relaxed | strict | strict |
+| `ja-colon-list` | strict | strict | relaxed | strict | strict | strict | strict | skip |
+| `ja-cta` | strict | relaxed | strict | strict | strict | skip | skip | strict |
+| `ja-dash` | strict | strict | strict | strict | relaxed | strict | skip | skip |
+| `ja-dekiru` | strict | strict | strict | relaxed | strict | strict | strict | strict |
+| `ja-inflated` | strict | strict | strict | strict | strict | relaxed | strict | strict |
+| `ja-long-sentence` | strict | strict | strict | relaxed | relaxed | strict | strict | strict |
+| `ja-mixed-style` | strict | strict | strict | strict | skip | strict | relaxed | strict |
+| `ja-natteiru` | strict | relaxed | strict | skip | strict | strict | strict | strict |
+| `ja-no-chain` | strict | strict | strict | relaxed | strict | strict | strict | strict |
+| `ja-okonau` | relaxed | strict | skip | skip | strict | strict | strict | strict |
+| `ja-pause-comma` | strict | strict | strict | strict | skip | strict | relaxed | strict |
+| `ja-pronoun` | strict | strict | strict | strict | relaxed | strict | strict | strict |
+| `ja-same-ending` | strict | strict | strict | skip | strict | strict | strict | skip |
+| `ja-staged-contrast` | strict | strict | strict | strict | relaxed | relaxed | strict | strict |
+| `ja-stock-word` | strict | strict | relaxed | skip | strict | skip | strict | strict |
+<!-- tolerance-matrix:end -->
+
 ## Where it runs
 
 - **Draft (all modes):** write without these patterns; the brief (`02-prompt.md`) lists the ones most likely for this text.

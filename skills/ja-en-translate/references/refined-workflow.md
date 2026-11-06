@@ -51,7 +51,7 @@ First run `scripts/fidelity_check.py <source> 03-draft.md` and `scripts/tone_lin
 # Critique
 
 ## A. Accuracy
-Omissions, additions, mistranslations, changed modality or claim strength, numbers, names.
+Omissions, additions, mistranslations, numbers, names. Then, per references/meaning-checks.md: sentence types that changed (hearsay → assertion, opinion → fact, request → description), six-point test failures on restructured sentences, and any shift in the modality strength table (critical in `technical` and `official`).
 
 ## B. Context fit
 Does it read as the declared context (academic / business / …)? Violations of that context's rules.
@@ -70,7 +70,7 @@ Glossary adherence; 表記ゆれ; style-guide-ja.md.
 Sentences a native reader of this context would stumble on.
 
 ## G. AI tone
-Per references/ai-tone.md, for the target language. For each instance: location, the phrase, the matching source sentence, and a verdict: *added by translation* (fix) or *present in source* (keep under `guard`; rewrite under `rewrite`, and say what changes).
+Per references/ai-tone.md, including the never-inject list (anything the draft *added* to sound natural: an "I", a dramatic dash, fragments, an invented example), for the target language. For each instance: location, the phrase, the matching source sentence, and a verdict: *added by translation* (fix) or *present in source* (keep under `guard`; rewrite under `rewrite`, and say what changes).
 
 ## Priority
 List the five most important fixes first.

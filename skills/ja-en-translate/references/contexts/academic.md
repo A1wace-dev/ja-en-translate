@@ -40,6 +40,8 @@ EN→JA: "may" ≠ 〜かもしれない in academic prose (too casual) → 〜�
 
 **Concepts with no equivalent** (居場所, 甘え, 世間, 共生): keep romanized in italics on first use with a gloss — *ibasho* (a place where one feels one belongs) — then use consistently.
 
+**Passive voice in English methods sections (JA→EN).** Methods and results conventionally use the passive ("Interviews were conducted with 12 participants"). Do not convert these to active voice to sound less stiff; the active-voice preference in general style advice does not apply there. Use the active voice where the source names the authors as actors (本研究では〜を分析した → "We analyzed…" or "This study analyzes…" by field convention).
+
 **Japanese academic conventions (EN→JA).**
 - Self-reference: "I" → 筆者 / 本稿 (not 私 unless the source is a personal essay)
 - "In this paper" → 本稿では; "we" in sciences → 本研究では / 我々 (field-dependent)

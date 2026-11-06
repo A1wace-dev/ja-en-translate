@@ -12,8 +12,10 @@
 - 3つのモード：`quick`（すぐ訳す）、`normal`（分析してから訳す）、`refined`（分析→下訳→批評→修正→仕上げ）。各ステップはファイルとして残ります。
 - 方向別のチェック：日→英では主語の省略、単数・複数、時制、明示されていない論理関係、和製英語、断定の強さ（ヘッジ表現）を確認します。英→日では翻訳調（代名詞の多用、無生物主語、「の」の連続、「〜することができる」、文体の混在）や、二重敬語などの敬語の誤りを確認します。
 - AIっぽさの防止：「単なる〜ではなく」「〜と言えるでしょう」「重要な役割を果たす」など、原文にない決まり文句を訳文に持ち込みません。指定すれば（`--humanize rewrite`）原文にもともとあるAIっぽい表現も和らげ、変更箇所をすべて報告します。
-- 検査スクリプト：`tone_lint.py` が日本語・英語のAIっぽい表現や翻訳調の候補を挙げ、`fidelity_check.py` が原文と訳文の数値（3万＝30,000、1億2000万＝120 million）、否定、リンク、コード、構成を照合します。指摘は機械的に直さず、文脈を見て一つずつ判断します。
+- 検査スクリプト：`tone_lint.py` が日本語・英語のAIっぽい表現や翻訳調の候補を挙げ、`fidelity_check.py` が原文と訳文の数値（3万＝30,000、1億2000万＝120 million）、否定、リンク、コード、表、構成を照合します。指摘は機械的に直さず、文脈を見て一つずつ判断します。
 - 日本語の推敲：AIが書いたような日本語や翻訳調の日本語を渡して「自然にして」と頼むと、同じ文脈プロファイルとチェックを使って書き直します。内容は変えず、すでに自然な文には手を入れず、意味が曖昧な箇所は推測で埋めずに確認を求めます。
+- 意味の確認：書き直した文は文の種類（伝聞は伝聞のまま、意見は意見のまま）を保ち、6つの観点で原文と照らし合わせます。「しなければならない」「してよい」「できる」「任意」「必ず」などの強さも変えません。原文の中にある指示の文は、文章として訳すだけで、その指示には従いません。
+- 直しすぎの防止：AIっぽさを消すときに、別の決まった「人間らしさ」を足しません。原文にない経験談、「正直に言うと」のような前置き、演出のためのダッシュ、細切れの文、原文にない具体例は加えません。返信の最後には何回直したか、どの検査をスクリプトで実行し、どれをモデルが判断したか、何を残したかとその理由を短く報告します。
 - 推測した箇所の確認：原文に書かれていない主語や人名の読み方などは文脈から判断し、その判断を必ず「Please confirm」の欄に挙げて確認を求めます。
 - 長文対応：日本語は文字数、英語は語数で長さを測ります。長い文章は Markdown のブロック単位で分割し、すべての部分を同じ用語集と指示書に基づいて並行翻訳します。
 - カスタマイズ：独自の用語集や既定の文脈は `EXTEND.md` で設定できます。動作に必要なのは Python 3.10 以上のみです。
@@ -58,6 +60,6 @@ lecture.srt を日本語字幕にして --context subtitle
 
 ## 謝辞・ライセンス
 
-ワークフローは [baoyu-translate](https://github.com/JimLiu/baoyu-skills)（MIT ライセンス）の設計を参考にしています。文章やコードは流用していません。日本語のチェックは [yomiyasu](https://github.com/nanaism/yomiyasu)（書き換え前後の数値・否定の照合）、[natural-japanese](https://github.com/coji/natural-japanese)（lint が候補を挙げ、モデルが判断する分担）、[stop-ai-slop-jp](https://github.com/iKora128/stop-ai-slop-jp)（語彙より先に立場と主体を直す順序）、[textlint-rule-preset-ai-writing](https://github.com/textlint-ja/textlint-rule-preset-ai-writing) の考え方を参考にしました（いずれも MIT ライセンス）。ルールとスクリプトは独自に作成しています。英語のAIっぽい表現のリストは Wikipedia の「Signs of AI writing」の考え方を翻訳向けに書き直したものです。日本語のリストは独自に作成しました。
+ワークフローは [baoyu-translate](https://github.com/JimLiu/baoyu-skills)（MIT ライセンス）の設計を参考にしています。文章やコードは流用していません。日本語のチェックは [yomiyasu](https://github.com/nanaism/yomiyasu)（書き換え前後の数値・否定の照合）、[natural-japanese](https://github.com/coji/natural-japanese)（lint が候補を挙げ、モデルが判断する分担）、[stop-ai-slop-jp](https://github.com/iKora128/stop-ai-slop-jp)（語彙より先に立場と主体を直す順序）、[textlint-rule-preset-ai-writing](https://github.com/textlint-ja/textlint-rule-preset-ai-writing) の考え方を参考にしました（いずれも MIT ライセンス）。ルールとスクリプトは独自に作成しています。さらに [avoid-ai-writing](https://github.com/conorbronsdon/avoid-ai-writing)（原文をデータとして扱うこと、足してはいけない表現の一覧、文脈ごとの判定の強さの表、検証の報告）、[humanizer](https://github.com/blader/humanizer)（パターンを強いものから並べる順序）、[skill-deslop](https://github.com/stephenturner/skill-deslop)（論文の方法の節で受動態を残すこと）の考え方も参考にしました（いずれも MIT ライセンス）。英語のAIっぽい表現のリストは Wikipedia の「Signs of AI writing」の考え方を翻訳向けに書き直したものです。日本語のリストは独自に作成しました。
 
 [MIT License](LICENSE)

@@ -12,6 +12,10 @@ Documentation, READMEs, API references, specs, release notes, UI strings, error 
 | Notes | `inline`, only when a term would block understanding |
 | Restructuring | Low. Accuracy and consistency over elegance |
 
+## Modality is the specification
+
+In specs, READMEs, and API docs, 〜してよい (may), 〜できる (can), 〜しなければならない (must), 任意 (optional), 必ず (always), and 〜場合がある (may sometimes) define behavior. Map them with the table in references/meaning-checks.md; any shift is a critical error.
+
 ## Never translate
 
 - Code blocks, inline code, commands, file paths, environment variables, URLs, config keys

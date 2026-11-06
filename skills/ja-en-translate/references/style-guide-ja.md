@@ -40,6 +40,22 @@ Pick one per document and record in the analysis:
 - 出来る → できる; 有る → ある; 為 → ため (in most contexts)
 - 子供 / 子ども: follow the source field (子ども is standard in education/child-rights writing)
 
+## Commas (読点)
+
+- Do not put a comma after a short topic, subject, or object only to make a pause: 本稿は地域の教室を扱う (not 本稿は、地域の…), 資料を全員に配る. Keep it when it marks a scene frame (会議では、担当者が…), a change of actor, a long subject or clause, a list, or prevents misreading.
+- `tone_lint.py` flags candidates as `ja-pause-comma`; decide each in context.
+
+## Colons
+
+Do not end a sentence with ： before a list, code block, or table (設定は次のとおりです：). End it with 。 (設定は次のとおりです。) or use a noun label. Label–value pairs (日時：10時) are fine.
+
+## Bold in Markdown
+
+CommonMark (GitHub, most renderers) does not render `**` when it touches a letter on one side and a bracket or 。 on the other: `次に**「立場」**を決める` shows the asterisks. In order of preference:
+1. Bold inside the brackets: `次に「**立場**」を決める`
+2. Move 。 outside: `これは**必須です**。`
+3. Otherwise add a half-width space outside the `**`.
+
 ## Headings and lists
 
 - Headings: 体言止め, no 。

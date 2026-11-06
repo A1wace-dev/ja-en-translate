@@ -110,6 +110,21 @@ def numbers(text):
     return Counter(round(v, 4) for v in vals)
 
 
+def tables(prose):
+    """Return [(rows, cols, numbers)] for each Markdown table (separator row excluded)."""
+    out, cur = [], []
+    for line in prose.splitlines() + [""]:
+        if line.strip().startswith("|"):
+            cur.append(line.strip())
+            continue
+        if cur:
+            body = [r for r in cur if not re.fullmatch(r"\|?(\s*:?-+:?\s*\|)+\s*:?-*:?\s*\|?", r)]
+            cols = max(len([c for c in r.strip("|").split("|")]) for r in body) if body else 0
+            out.append((len(body), cols, numbers("\n".join(body))))
+            cur = []
+    return out
+
+
 def paragraphs(prose):
     return [p.strip() for p in re.split(r"\n\s*\n", prose) if p.strip()]
 
@@ -171,6 +186,18 @@ def check(src_text, out_text, mode="translate"):
         a, b = len(rx.findall(s_prose)), len(rx.findall(o_prose))
         if a != b:
             add("medium", name, f"{a} in source, {b} in output.")
+
+    # Tables: same number of tables, rows, columns, and the same numbers in each
+    st, ot = tables(s_prose), tables(o_prose)
+    if len(st) != len(ot):
+        add("high", "tables", f"{len(st)} tables in source, {len(ot)} in output.")
+    else:
+        for i, ((sr, sc, sn_), (orr, oc, on_)) in enumerate(zip(st, ot), 1):
+            if (sr, sc) != (orr, oc):
+                add("high", "table-shape", f"{sr}×{sc} in source, {orr}×{oc} in output.", f"table {i}")
+            if sn_ - on_:
+                add("high", "table-numbers",
+                    "Numbers missing: " + ", ".join(fmt_num(v) for v in sorted((sn_ - on_).elements())), f"table {i}")
 
     # Numbers: whole document
     sn, on = numbers(s_prose), numbers(o_prose)

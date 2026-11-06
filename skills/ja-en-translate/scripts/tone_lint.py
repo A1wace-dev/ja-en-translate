@@ -66,6 +66,10 @@ JA_RULES = [
      "Half-width punctuation after Japanese text."),
     ("ja-fullwidth-digit", "symbols", "low", r"[０-９]+",
      "Full-width digits in horizontal text → half-width."),
+    ("ja-pause-comma", "readability", "low",
+     r"(?:^|[。！？]\s*)[^\s、。「」]{1,6}(?:は|が|を|には|では|とは|も)、",
+     "Comma after a short topic/subject/object that only adds a pause; remove unless it marks a "
+     "scene frame, a change of actor, or prevents misreading."),
 ]
 
 EN_RULES = [
@@ -94,20 +98,73 @@ EN_RULES = [
 ]
 
 COMMON_RULES = [
+    ("bold-not-rendered", "symbols", "high",
+     r"(?<=[A-Za-z0-9\u3040-\u30FF\u4E00-\u9FFF])\*\*(?=[「『（【〔“\"'(\[、。！？])|"
+     r"(?<=[」』）】〕”\"')\]、。！？])\*\*(?=[A-Za-z0-9\u3040-\u30FF\u4E00-\u9FFF])",
+     "** next to punctuation and touching a letter: Markdown (GitHub) will not render the bold. "
+     "Bold only the text inside the brackets, move 。 outside, or add a half-width space outside **."),
     ("bold-label", "symbols", "medium", r"^\s*[-*+]\s+\*\*[^*]+?(\*\*\s*[:：]|[:：]\s*\*\*)",
      "Bold label on a list item; follow the source's formatting."),
     ("emoji", "symbols", "medium", EMOJI.pattern,
      "Emoji; keep only if the source has them."),
 ]
 
-# Contexts where some rules are expected rather than suspicious
-RELAXED = {
-    "marketing": {"ja-cta", "emoji", "ja-stock-word", "en-stock-word"},
-    "casual": {"emoji", "ja-cta", "ja-dash"},
-    "technical": {"ja-okonau", "bold-label"},
-    "official": {"ja-okonau", "ja-natteiru", "ja-stock-word"},
-    "subtitle": {"ja-dash"},
+# Per-context tolerance: "relaxed" lowers severity one level, "skip" drops the rule.
+# Rules not listed are strict in every context. ai-tone.md shows this table
+# (tone_lint.py --print-matrix); keep the two in sync.
+CONTEXTS = ["academic", "business", "technical", "official", "literary", "marketing", "casual", "subtitle"]
+TOLERANCE = {
+    "ja-staged-contrast": {"literary": "relaxed", "marketing": "relaxed"},
+    "en-staged-contrast": {"literary": "relaxed", "marketing": "relaxed"},
+    "ja-closer": {"literary": "relaxed", "marketing": "relaxed"},
+    "ja-inflated": {"marketing": "relaxed"},
+    "en-inflated": {"marketing": "relaxed"},
+    "ja-stock-word": {"technical": "relaxed", "official": "skip", "marketing": "skip"},
+    "en-stock-word": {"technical": "relaxed", "marketing": "skip"},
+    "ja-cta": {"business": "relaxed", "marketing": "skip", "casual": "skip"},
+    "ja-dekiru": {"official": "relaxed"},
+    "ja-okonau": {"academic": "relaxed", "technical": "skip", "official": "skip"},
+    "ja-natteiru": {"business": "relaxed", "official": "skip"},
+    "ja-no-chain": {"official": "relaxed"},
+    "ja-pronoun": {"literary": "relaxed"},
+    "ja-dash": {"literary": "relaxed", "casual": "skip", "subtitle": "skip"},
+    "en-dash": {"literary": "relaxed", "casual": "skip"},
+    "en-ing-rider": {"marketing": "relaxed"},
+    "en-copula-avoid": {"marketing": "relaxed"},
+    "ja-pause-comma": {"literary": "skip", "casual": "relaxed"},
+    "ja-colon-list": {"technical": "relaxed", "subtitle": "skip"},
+    "ja-long-sentence": {"official": "relaxed", "literary": "relaxed"},
+    "ja-mixed-style": {"literary": "skip", "casual": "relaxed"},
+    "ja-same-ending": {"official": "skip", "subtitle": "skip"},
+    "bold-label": {"technical": "skip", "subtitle": "skip"},
+    "emoji": {"marketing": "skip", "casual": "skip"},
 }
+LOWER = {"high": "medium", "medium": "low", "low": "low"}
+
+
+def apply_tolerance(findings, context):
+    if not context:
+        return findings
+    out = []
+    for f in findings:
+        level = TOLERANCE.get(f["rule"], {}).get(context, "strict")
+        if level == "skip":
+            continue
+        if level == "relaxed":
+            f = dict(f, severity=LOWER[f["severity"]])
+        out.append(f)
+    return out
+
+
+def matrix_markdown():
+    head = "| Rule | " + " | ".join(CONTEXTS) + " |"
+    sep = "|---|" + "---|" * len(CONTEXTS)
+    rows = [head, sep]
+    for rule in sorted(TOLERANCE):
+        cells = [TOLERANCE[rule].get(c, "strict") for c in CONTEXTS]
+        rows.append(f"| `{rule}` | " + " | ".join(cells) + " |")
+    return "\n".join(rows)
+
 
 JA_POLITE = re.compile(r"(です|ます|ました|でした|ません|でしょう|ください)[。！？]?$")
 JA_PLAIN = re.compile(r"(である|だ|だった|であった|ではない|のだ|[たるうい])[。！？]$")
@@ -156,19 +213,19 @@ def lint(text, lang="auto", context=None):
     if lang == "auto":
         lang = detect_lang(text)
     rules = (JA_RULES if lang == "ja" else EN_RULES) + COMMON_RULES
-    relaxed = RELAXED.get(context or "", set())
     lines = list(prose_lines(text))
     findings = []
 
     for rid, cat, sev, pat, hint in rules:
-        if rid in relaxed:
-            continue
         rx = re.compile(pat, re.M)
         for no, raw, clean in lines:
             target = raw if rid == "bold-label" else clean
             for m in rx.finditer(target):
+                snippet = m.group(0)
+                if len(snippet) < 4:  # show context for very short matches such as **
+                    snippet = target[max(0, m.start() - 8):m.end() + 8]
                 findings.append({"line": no, "rule": rid, "category": cat,
-                                 "severity": sev, "match": m.group(0)[:60], "hint": hint})
+                                 "severity": sev, "match": snippet[:60], "hint": hint})
 
     if lang == "ja":
         sents = split_ja_sentences(lines)
@@ -193,8 +250,22 @@ def lint(text, lang="auto", context=None):
                                  "severity": "low", "match": ends[i][1],
                                  "hint": "Same sentence ending three times in a row."})
 
+    # Colon continuation: a sentence ending in a verb/adjective + colon, then a list/code/table
+    if lang == "ja":
+        raw_lines = text.splitlines()
+        for i, line in enumerate(raw_lines):
+            if re.search(r"(る|た|い|す|です|ます|ください|通り|とおり|以下)[:：]\s*$", line.strip()):
+                nxt = next((l for l in raw_lines[i + 1:] if l.strip()), "")
+                if re.match(r"^\s*([-*+]\s|\d+[.)]\s|```|~~~|\|)", nxt):
+                    findings.append({"line": i + 1, "rule": "ja-colon-list", "category": "symbols",
+                                     "severity": "medium", "match": line.strip()[-20:],
+                                     "hint": "English-style colon before a list/code/table; end the sentence "
+                                             "with 。 (〜は次のとおりです。) or use a noun label."})
+
+    findings = apply_tolerance(findings, context)
+
     # Density rules: low-severity hits only matter when frequent
-    size = max(len(text), 1)
+    size = max(len(text), 1000)  # short texts are not penalized for a single hit
     per_k = {}
     for f in findings:
         if f["severity"] == "low":
@@ -213,12 +284,16 @@ def lint(text, lang="auto", context=None):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("file", type=Path)
+    ap.add_argument("file", type=Path, nargs="?")
+    ap.add_argument("--print-matrix", action="store_true", help="Print the context tolerance table as Markdown")
     ap.add_argument("--lang", choices=["ja", "en", "auto"], default="auto")
     ap.add_argument("--context")
     ap.add_argument("--format", choices=["json", "text"], default="json")
     a = ap.parse_args()
-    if not a.file.is_file():
+    if a.print_matrix:
+        print(matrix_markdown())
+        return
+    if a.file is None or not a.file.is_file():
         sys.exit(f"File not found: {a.file}")
     r = lint(a.file.read_text(encoding="utf-8"), a.lang, a.context)
     if a.format == "json":
