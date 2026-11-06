@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.DS_Store
+# Local preferences and personal glossaries
+.ja-en-translate/
+EXTEND.md
+# Translation outputs from trying the skill
+translate/
+*-en/
+*-ja/
