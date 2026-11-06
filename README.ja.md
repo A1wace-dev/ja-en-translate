@@ -14,7 +14,7 @@
 - **AI調ガード**：「単なる〜ではなく」「〜と言えるでしょう」「重要な役割を果たす」など、原文にない決まり文句を訳文に持ち込みません。依頼があれば（`--humanize rewrite`）原文自体のAI調も抑え、変更点をすべて報告します。
 - **推測で埋めない**：原文が明示していない主語や人名の読みは文脈から判断し、「Please confirm」として確認を求めます。
 - **長文対応**：日本語は文字数、英語は語数で長さを測り、Markdown のブロック単位で分割して、共通の用語集と指示書のもとで並行翻訳します。
-- **カスタマイズ**：用語集や既定の文脈を `EXTEND.md` で設定できます。必要なのは Python 3.9 以上だけです。
+- **カスタマイズ**：用語集や既定の文脈を `EXTEND.md` で設定できます。必要なのは Python 3.10 以上だけです。
 
 例：[examples/context-switching.md](examples/context-switching.md)、[examples/ai-tone-guard.md](examples/ai-tone-guard.md)
 

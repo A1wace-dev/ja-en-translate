@@ -8,7 +8,7 @@ Usage:
   chunk.py measure <file>
   chunk.py split <file> --output-dir DIR [--max-ja-chars N] [--max-en-words N]
 
-Standard library only. Python 3.9+.
+Standard library only. Python 3.10+.
 """
 import argparse
 import json

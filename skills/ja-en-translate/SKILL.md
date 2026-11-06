@@ -27,7 +27,7 @@ If no user is present (scheduled or headless run), never block: take the most re
 
 ## Script Directory
 
-`{baseDir}` = this SKILL.md's directory. Scripts run with Python 3.9+ and the standard library only.
+`{baseDir}` = this SKILL.md's directory. Scripts run with Python 3.10+ and the standard library only.
 
 | Script | Purpose |
 |---|---|

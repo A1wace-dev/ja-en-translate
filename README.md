@@ -14,7 +14,7 @@ A business email, a course paper, a LINE message, and a subtitle file need diffe
 - **AI-tone guard.** The translation must not add staged contrasts ("not X but Y", 単なる〜ではなく), closer lines (〜と言えるでしょう), inflated significance, or stock vocabulary that the source does not contain. On request (`--humanize rewrite`), it can also tone down AI phrasing that is already in the source, listing every change.
 - **Asks instead of guessing.** Subjects, name readings, and referents that the source leaves open are resolved from context and listed under "Please confirm".
 - **Long documents.** Japanese is measured in characters and English in words. Long texts are split at Markdown block boundaries and translated in parallel against one shared glossary and brief.
-- **Configurable.** Personal glossaries, default context, and per-context overrides in `EXTEND.md`. No dependencies beyond Python 3.9+.
+- **Configurable.** Personal glossaries, default context, and per-context overrides in `EXTEND.md`. No dependencies beyond Python 3.10+.
 
 See [examples/context-switching.md](examples/context-switching.md) and [examples/ai-tone-guard.md](examples/ai-tone-guard.md).
 

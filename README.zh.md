@@ -14,7 +14,7 @@
 - **AI 腔防护**：不在译文里加入原文没有的「不是……而是……」式对比、「〜と言えるでしょう」式收尾句、夸大的意义和套话。用户要求时（`--humanize rewrite`）也可以弱化原文自带的 AI 腔，并列出每一处改动。
 - **不擅自补全**：原文没说清的主语、人名读音、指代对象，会根据上下文判断，并列入「Please confirm」请你确认。
 - **长文处理**：日文按字符、英文按词计算长度，按 Markdown 块切分，在同一份术语表和翻译说明下并行翻译。
-- **可配置**：在 `EXTEND.md` 里设置个人术语表、默认语境、各语境的覆盖项。只依赖 Python 3.9+。
+- **可配置**：在 `EXTEND.md` 里设置个人术语表、默认语境、各语境的覆盖项。只依赖 Python 3.10+。
 
 示例：[examples/context-switching.md](examples/context-switching.md)、[examples/ai-tone-guard.md](examples/ai-tone-guard.md)
 
