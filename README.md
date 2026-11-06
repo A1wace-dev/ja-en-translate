@@ -2,19 +2,19 @@
 
 English | [日本語](README.ja.md) | [中文](README.zh.md)
 
-An agent skill for Japanese⇄English translation that decides **what kind of text it is translating and for whom** before it translates. Works with Claude Code, Codex, and other agents that read `SKILL.md`.
+An agent skill for Japanese⇄English translation. Before it translates, it works out **what kind of text it has and who will read it**. It runs in Claude Code, Codex, and any other agent that reads `SKILL.md`.
 
-A business email, a course paper, a LINE message, and a subtitle file need different Japanese and different English. This skill picks a context profile for the text (or for each section of it), then applies that profile's rules for register, keigo, restructuring, and translator's notes. It also checks the translation for the failures typical of each direction and for AI-sounding phrasing the source never had.
+A business email, a course paper, a LINE message, and a subtitle file each call for different Japanese and different English. The skill assigns a context profile to the whole text or to each section, and that profile sets the register, the level of keigo, how freely sentences may be restructured, and whether translator's notes are allowed. It then checks the result for the mistakes typical of each translation direction, and for AI-sounding phrasing that is not in the source.
 
 ## Features
 
-- **Eight context profiles:** `academic`, `business`, `technical`, `official`, `literary`, `marketing`, `casual`, `subtitle`. Detected automatically, with the evidence written down; mixed documents get a profile per section.
+- **Eight context profiles:** `academic`, `business`, `technical`, `official`, `literary`, `marketing`, `casual`, `subtitle`. The skill chooses one automatically and records why. A mixed document can use a different profile for each section.
 - **Three modes:** `quick` (translate), `normal` (analyze, then translate), `refined` (analyze, draft, critique, revise, polish). Every step is saved as a file you can read.
-- **Direction-specific review.** JA→EN checks omitted subjects, number, tense, implicit logic, 和製英語, and hedging strength. EN→JA checks 翻訳調: pronoun overuse, inanimate subjects, の chains, 〜することができる, mixed 文体, and keigo errors such as 二重敬語.
-- **AI-tone guard.** The translation must not add staged contrasts ("not X but Y", 単なる〜ではなく), closer lines (〜と言えるでしょう), inflated significance, or stock vocabulary that the source does not contain. On request (`--humanize rewrite`), it can also tone down AI phrasing that is already in the source, listing every change.
-- **Asks instead of guessing.** Subjects, name readings, and referents that the source leaves open are resolved from context and listed under "Please confirm".
-- **Long documents.** Japanese is measured in characters and English in words. Long texts are split at Markdown block boundaries and translated in parallel against one shared glossary and brief.
-- **Configurable.** Personal glossaries, default context, and per-context overrides in `EXTEND.md`. No dependencies beyond Python 3.10+.
+- **Direction-specific review.** For JA→EN it checks omitted subjects, singular and plural, tense, unstated logical links, 和製英語 (Japanese-made English), and how strongly claims are hedged. For EN→JA it checks for 翻訳調 (translationese): pronoun overuse, inanimate subjects, の chains, 〜することができる, mixed 文体, and keigo errors such as 二重敬語.
+- **AI-tone guard.** The skill keeps out phrasing the source does not use: contrasts the source never draws ("not X but Y", 単なる〜ではなく), tacked-on closing lines (〜と言えるでしょう), inflated claims of importance, or stock phrases. If you ask (`--humanize rewrite`), it will also tone down AI-sounding phrasing that is already in the source and list every change.
+- **Flags its assumptions.** When the source leaves a subject, a name reading, or a referent unstated, the skill decides from context and lists each decision under "Please confirm".
+- **Long documents.** Japanese is measured in characters and English in words. Long texts are split at Markdown block boundaries and translated in parallel, with every part following the same glossary and brief.
+- **Configurable.** Set personal glossaries, a default context, and per-context overrides in `EXTEND.md`. Requires only Python 3.10 or later.
 
 See [examples/context-switching.md](examples/context-switching.md) and [examples/ai-tone-guard.md](examples/ai-tone-guard.md).
 
@@ -54,8 +54,8 @@ Output goes to `{source}-{lang}/` next to the source file:
 | File | Content |
 |---|---|
 | `translation.md` | Final translation |
-| `01-analysis.md` | Context and evidence, register, term decisions, resolved implicit elements |
-| `02-prompt.md` | The brief every translator pass follows |
+| `01-analysis.md` | Chosen context and why, register, terminology decisions, and what was filled in where the source left it unstated |
+| `02-prompt.md` | Translation brief shared by every pass |
 | `03-draft.md` … `05-revision.md` | Draft, critique (diagnosis only), revision (refined mode) |
 
 ## Configuration
@@ -97,8 +97,8 @@ tests/                          unit tests (python -m unittest discover -s tests
 ## Limits
 
 - The rules are guidance for a language model, not a guarantee. Check anything with legal, academic, or financial consequences yourself; for official documents, the Japanese original is authoritative.
-- The built-in glossary is small. Your field's terms belong in your own `EXTEND.md`.
-- Inputs other than Markdown and plain text (.docx, .pdf) depend on the conversion tools available to your agent.
+- The built-in glossary is small. Add the terms of your own field to `EXTEND.md`.
+- For inputs other than Markdown and plain text (.docx, .pdf), results depend on the conversion tools your agent has.
 
 ## Acknowledgments
 
