@@ -2,7 +2,7 @@
 
 [English](README.md) | [日本語](README.ja.md) | 中文
 
-ja-en-translate 是一个用于日英互译的 Agent Skill。它在动笔之前先判断**手上是什么文本、读者是谁**，再按相应语境的规则来翻译。Claude Code、Codex 等能读取 `SKILL.md` 的工具都可以使用。
+ja-en-translate 是一个用于日英互译、也能润色日语的 Agent Skill。它在动笔之前先判断**手上是什么文本、读者是谁**，再按相应语境的规则来翻译。Claude Code、Codex 等能读取 `SKILL.md` 的工具都可以使用。
 
 商务邮件、课程报告、LINE 消息和字幕文件，要求的日语和英语各不相同。这个 Skill 会为整篇文本或其中的每一节指定一种“语境”，由语境决定文体、敬语级别、句子可以调整到什么程度，以及是否允许加译注。译完之后，它会针对翻译方向检查常见错误，并检查译文有没有混入原文里没有的 AI 腔。
 
@@ -12,6 +12,8 @@ ja-en-translate 是一个用于日英互译的 Agent Skill。它在动笔之前�
 - **3 种模式**：`quick`（直接翻译）、`normal`（先分析再翻译）、`refined`（分析→初稿→批评→修订→润色）。每一步都保存成文件。
 - **按方向审校**：日→英检查主语省略、单复数、时态、没有明说的逻辑关系、和製英語（日式英语），以及断言的强弱；英→日检查翻译调（代词滥用、无生物主语、の连用、〜することができる、文体混用）和二重敬语等敬语错误。
 - **防止 AI 腔**：不会在译文里加入原文没有的内容，比如“不是……而是……”式的对比、「〜と言えるでしょう」式的收尾句、夸大其词的评价和套话。如果你提出要求（`--humanize rewrite`），它也会淡化原文本身的 AI 腔，并列出每一处改动。
+- **代码负责检查，模型负责判断**：`tone_lint.py` 列出日语和英语中可能的 AI 腔和翻译调；`fidelity_check.py` 比对原文和译文的数字（3万＝30,000，1億2000万＝120 million）、否定、链接、代码和文档结构。检出结果不会被机械地替换，而是由模型结合上下文逐条判断。
+- **日语润色**：把读起来像 AI 写的或带翻译腔的日语交给它，说“改自然一点”，它会用同样的语境配置和检查来改写：不改变内容，已经自然的句子不动，意思不清楚的地方不猜，而是列出来请你确认。
 - **补全必有交代**：原文没有写明的主语、人名读音和指代对象，会根据上下文作出判断，并逐条列在“Please confirm”中请你确认。
 - **长文处理**：日文按字数、英文按词数计算长度，按 Markdown 块切分后并行翻译，各部分遵循同一份术语表和翻译说明。
 - **可配置**：可以在 `EXTEND.md` 中设置个人术语表、默认语境，以及针对各语境的单独设置。运行只需要 Python 3.10 或更高版本。
@@ -43,6 +45,7 @@ Claude 应用：把 `skills/ja-en-translate` 文件夹压缩成 zip，在设置�
 把这封邮件翻成日语，发给合作公司的部长
 把 lecture.srt 翻成日语字幕 --context subtitle
 翻成英文，顺便去掉 AI 味 --humanize rewrite
+这段日语读起来像 AI 写的，帮我改自然（课程报告）
 ```
 
 不需要加任何参数。用中文、日语或英语说明用途即可，比如“这是发给教授的邮件”“大概意思就行”“要发表的”，Skill 会从中读出语境、敬语级别和模式。每次回复开头会用一行列出它识别到的设置，判断错了可以马上纠正。
@@ -73,6 +76,6 @@ context_overrides:
 
 ## 致谢与许可
 
-工作流程的设计参考了 [baoyu-translate](https://github.com/JimLiu/baoyu-skills)（MIT 许可），但没有复制其中的文字或代码。英文 AI 腔清单借鉴了维基百科“Signs of AI writing”的思路，并针对翻译场景重新编写；日文清单为原创。
+工作流程的设计参考了 [baoyu-translate](https://github.com/JimLiu/baoyu-skills)（MIT 许可），但没有复制其中的文字或代码。日语检查参考了 [yomiyasu](https://github.com/nanaism/yomiyasu)（改写前后比对数字和否定）、[natural-japanese](https://github.com/coji/natural-japanese)（lint 负责检出、模型负责判断）、[stop-ai-slop-jp](https://github.com/iKora128/stop-ai-slop-jp)（先改立场和主体，再改词汇）和 [textlint-rule-preset-ai-writing](https://github.com/textlint-ja/textlint-rule-preset-ai-writing) 的思路（均为 MIT 许可），规则和脚本均为独立编写。英文 AI 腔清单借鉴了维基百科“Signs of AI writing”的思路，并针对翻译场景重新编写；日文清单为原创。
 
 [MIT License](LICENSE)

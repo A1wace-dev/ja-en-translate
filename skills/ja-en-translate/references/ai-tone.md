@@ -52,6 +52,7 @@ LLM-generated Japanese has its own voice. Strongest first.
 ## Where it runs
 
 - **Draft (all modes):** write without these patterns; the brief (`02-prompt.md`) lists the ones most likely for this text.
+- **Script:** `scripts/tone_lint.py` lists candidates for both languages. It is a first pass, not a verdict; triage every finding against the source.
 - **Critique (refined):** section G "AI tone" in `04-critique.md`: each flagged instance with its source sentence and a verdict, *added by translation* (fix) or *present in source* (keep in `guard`; rewrite in `rewrite`).
 - **Polish (refined) / final check (normal):** one last scan of the output for items 1–6 of the target language's list.
 

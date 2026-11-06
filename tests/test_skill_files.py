@@ -33,7 +33,7 @@ class SkillFileTests(unittest.TestCase):
         for md in SKILL.rglob("*.md"):
             for ref in REF.findall(md.read_text(encoding="utf-8")):
                 name = ref.rsplit("/", 1)[-1]
-                if name in {"SKILL.md", "EXTEND.md", "translation.md", "my-courses.md", "report.md"}:
+                if name in {"SKILL.md", "EXTEND.md", "translation.md", "my-courses.md", "report.md", "polished.md"}:
                     continue
                 if name.startswith(("chunk-", "0")) or name in {"frontmatter.md", "src.md"}:
                     continue

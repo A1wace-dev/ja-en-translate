@@ -1,6 +1,6 @@
 ---
 name: ja-en-translate
-description: Context-aware Japanese↔English translation with three modes (quick/normal/refined), eight context profiles (academic, business, technical, official, literary, marketing, casual, subtitle), keigo/register control, and glossary consistency. Use when the user asks to translate between Japanese and English — "翻訳して", "英訳", "和訳", "日本語にして", "英語にして", "日英翻译", "英日翻译", "翻成日文", "翻成日语", "翻成英文", "翻成英语", "帮我翻译", "translate to Japanese", "translate to English", "精翻", "快翻", "refined translation", "proofread translation", "去掉AI味", "AIっぽさを消して" — or provides a Japanese/English file or URL with translation intent.
+description: Context-aware Japanese↔English translation, plus polishing of AI-sounding or translated Japanese, with three modes (quick/normal/refined), eight context profiles (academic, business, technical, official, literary, marketing, casual, subtitle), keigo/register control, and glossary consistency. Use when the user asks to translate between Japanese and English — "翻訳して", "英訳", "和訳", "日本語にして", "英語にして", "日英翻译", "英日翻译", "翻成日文", "翻成日语", "翻成英文", "翻成英语", "帮我翻译", "translate to Japanese", "translate to English", "精翻", "快翻", "refined translation", "proofread translation", "去掉AI味", "AIっぽさを消して", "日本語を自然にして", "日语改自然" — or provides a Japanese/English file or URL with translation intent.
 version: 1.1.0
 ---
 
@@ -13,7 +13,10 @@ Four things set it apart from a generic translation prompt:
 1. **Context profiles** decide register, keigo level, how much to restructure, and whether translator's notes are allowed. One document may contain several contexts (e.g., an academic paper quoting an interview).
 2. **Direction-specific review.** JA→EN and EN→JA fail in different ways (subject omission vs. 翻訳調), so the critique step uses a checklist for the actual direction.
 3. **AI-tone guard.** The translation must not add the stock voice of machine-written text (staged contrasts, inflated significance, 「〜と言えるでしょう」 closers) that the source does not have. Optionally, AI tone already in the source can be reduced on request.
-4. **CJK-aware length measurement.** Japanese is measured in characters, English in words, so long Japanese texts are chunked correctly.
+4. **Checks that run as code.** `tone_lint.py` lists AI-tone and translationese candidates for the agent to judge; `fidelity_check.py` compares source and output for numbers, negation, links, code, and structure.
+5. **Japanese polish.** The same rules can rewrite AI-generated or translated Japanese into natural Japanese without translating it (references/ja-polish.md).
+
+Japanese is measured in characters and English in words, so long Japanese texts are chunked correctly.
 
 ## User Input Tools
 
@@ -32,11 +35,17 @@ If no user is present (scheduled or headless run), never block: take the most re
 | Script | Purpose |
 |---|---|
 | `scripts/chunk.py` | Measure length (JA chars / EN words) and split Markdown into chunks at block boundaries |
+| `scripts/tone_lint.py` | List AI-tone, translationese, readability, and 文体-mixing candidates in JA or EN text, with a 0–100 score |
+| `scripts/fidelity_check.py` | Compare source and output: numbers (万/億, million normalized), negation, URLs, code, links, footnotes, headings, lists |
 
 ```
 python3 {baseDir}/scripts/chunk.py measure <file>
 python3 {baseDir}/scripts/chunk.py split <file> --output-dir <dir> [--max-ja-chars 6000] [--max-en-words 3000]
+python3 {baseDir}/scripts/tone_lint.py <file> [--lang ja|en] [--context <context>] [--format json|text]
+python3 {baseDir}/scripts/fidelity_check.py <source> <output> [--mode translate|rewrite] [--format json|text]
 ```
+
+Script findings are candidates. The agent decides each one in context; it never applies them mechanically.
 
 ## Preferences (EXTEND.md)
 
@@ -63,6 +72,7 @@ Flags are optional. Most requests arrive as plain sentences in Chinese, Japanese
 
 | Setting | What to listen for | Examples → result |
 |---|---|---|
+| Task | Translate, or make existing Japanese natural without translating | "翻成…", "英訳して", "translate" → translate; Japanese text plus "日本語を自然にして", "AIっぽさを消して", "读起来像AI，改一下", "polish this Japanese" → polish (Japanese Polish section) |
 | Direction | Named target language; otherwise the source language decides | "翻成日语" / "日本語にして" / "into Japanese" → EN→JA |
 | Mode: quick | Speed, gist, low stakes | "快翻", "大概意思", "随便翻一下", "ざっくり", "とりあえず", "just the gist" → quick |
 | Mode: refined | Submission, publication, high stakes, care | "精翻", "认真翻", "要交的", "要发表", "很重要", "丁寧に", "提出用", "公開する", "polished", "for publication" → refined |
@@ -200,21 +210,22 @@ Direction checklists — load the one for the current direction:
 - AI-tone patterns for the target language: references/ai-tone.md
 
 #### Quick
-Detect context silently, translate, save `translation.md`. No analysis file. Apply the context profile's core stance and the universal principles, then scan the output once for AI-tone items 1–6 of the target language (references/ai-tone.md).
+Detect context silently, translate, save `translation.md`. No analysis file. Apply the context profile's core stance and the universal principles, then scan the output once for AI-tone items 1–6 of the target language (references/ai-tone.md). If the source contains numbers, URLs, or code, also run `fidelity_check.py`.
 
 #### Normal
 1. **Analyze** → `01-analysis.md`: direction; context(s) with evidence; audience; 文体 / keigo / English variant; terms and decisions; names; implicit elements that had to be resolved (subject, number, tense); cultural items; challenges.
 2. **Brief** → `02-prompt.md`.
-3. **Translate** → `translation.md`. Uncertain spots get a `<!-- TN: … -->` comment while drafting; before saving, remove them and carry the questions to "Please confirm" in the summary. Finish with one AI-tone scan of the output (references/ai-tone.md §Where it runs).
+3. **Translate** → `translation.md`. Uncertain spots get a `<!-- TN: … -->` comment while drafting; before saving, remove them and carry the questions to "Please confirm" in the summary.
+4. **Check.** Run `fidelity_check.py <source> translation.md` and `tone_lint.py translation.md --context <context>`. Fix every high fidelity finding, or explain it in the summary (e.g., 30,000 → 3万 is fine). Triage lint findings against the source: fix what the translation added, keep what the source has (references/ai-tone.md, guard rule).
 
 #### Refined
 Steps and files: see references/refined-workflow.md.
 1. Analyze → `01-analysis.md`
 2. Brief → `02-prompt.md`
 3. Draft → `03-draft.md`
-4. Critique → `04-critique.md` (diagnosis only: accuracy, context fit, direction-specific pitfalls, register consistency, terminology, AI tone)
+4. Critique → `04-critique.md` (diagnosis only: accuracy, context fit, direction-specific pitfalls, register consistency, terminology, AI tone). Run `fidelity_check.py` and `tone_lint.py` on `03-draft.md` first and use their output as input to sections A and G.
 5. Revise → `05-revision.md`
-6. Polish → `translation.md` (read as a native reader of the target in that context; final 表記 / style pass)
+6. Polish → `translation.md` (read as a native reader of the target in that context; final 表記 / style pass), then re-run both scripts on `translation.md`: no high fidelity finding may remain unexplained.
 
 Each step reads the previous file.
 
@@ -235,7 +246,12 @@ Direction: {from} → {to}
 Context: {context(s)} · Register: {文体 / keigo / variant}
 Output: {output-dir}/translation.md
 Glossary terms applied: {count}
+Checks: fidelity {clean | n explained} · tone score {score}
 ```
+
+## Japanese Polish
+
+When the task is polish (see Reading the Request), follow references/ja-polish.md instead of the translation workflow. It reuses the context profiles, references/ai-tone.md (Japanese list), references/en-to-ja-pitfalls.md (translationese), references/style-guide-ja.md, and both scripts (`fidelity_check.py --mode rewrite`). Output goes to `{source-basename}-polished/polished.md`; short texts are answered inline.
 
 ## Extension
 

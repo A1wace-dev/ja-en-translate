@@ -43,6 +43,8 @@ Translate following the brief. Translator's notes per the notes policy. If somet
 
 ## 4. Critique → `04-critique.md`
 
+First run `scripts/fidelity_check.py <source> 03-draft.md` and `scripts/tone_lint.py 03-draft.md --context <context>`. Every high fidelity finding goes into section A (as an error, or with the reason it is fine); lint findings feed section G.
+
 **Diagnosis only. Do not rewrite here.** Compare draft against source sentence by sentence. Use these sections; cite location and quote the problem briefly.
 
 ```markdown
