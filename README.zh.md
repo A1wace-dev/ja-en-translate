@@ -45,11 +45,13 @@ Claude 应用：把 `skills/ja-en-translate` 文件夹压缩成 zip，在设置�
 翻成英文，顺便去掉 AI 味 --humanize rewrite
 ```
 
+不需要加任何参数。用中文、日语或英语说明用途即可，比如“这是发给教授的邮件”“大概意思就行”“要发表的”，Skill 会从中读出语境、敬语级别和模式。每次回复开头会用一行列出它识别到的设置，判断错了可以马上纠正。
+
 normal 模式译完后，回复“继续润色”“推敲して”或“refine”，就会对同一份译文继续进行批评和润色。
 
 ## 配置示例
 
-第一次使用时会询问 4 个问题，并据此生成 `~/.ja-en-translate/EXTEND.md`：
+使用前不需要做任何设置。第一次翻译完成后，Skill 会询问是否把常用设置保存到 `~/.ja-en-translate/EXTEND.md`（回答 4 个问题即可）：
 
 ```yaml
 default_context: academic

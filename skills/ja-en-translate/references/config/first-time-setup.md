@@ -1,6 +1,10 @@
 # First-Time Setup
 
-Run when no EXTEND.md is found. Ask everything in ONE call, then write the file.
+Run when no EXTEND.md is found, **after** the first translation has been delivered, never before it. The user came to translate; setup must not stand in the way.
+
+Offer it in one line at the end of that reply, in the user's language, for example: "要把这次的设置保存为默认吗？只需回答 4 个问题。" If the user agrees, ask everything in ONE call, then write the file. If they decline or ignore it, do not offer again in the same session.
+
+Pre-fill the recommended answers from what the first request showed (e.g., if it was an academic EN→JA translation, mark Academic as recommended).
 
 ## Questions
 
@@ -30,7 +34,7 @@ Write EXTEND.md with the answers plus defaults for every other key (copy the sch
 
 Confirm: "Preferences saved to [path]. Add your own terms under `glossary:` to keep them consistent across translations."
 
-Then continue the original translation request.
+No translation is pending at this point; simply confirm and stop.
 
 ## No user present
 

@@ -1,6 +1,6 @@
 ---
 name: ja-en-translate
-description: Context-aware Japanese↔English translation with three modes (quick/normal/refined), eight context profiles (academic, business, technical, official, literary, marketing, casual, subtitle), keigo/register control, and glossary consistency. Use when the user asks to translate between Japanese and English — "翻訳して", "英訳", "和訳", "日本語にして", "英語にして", "日英翻译", "英日翻译", "翻成日文", "翻成英文", "translate to Japanese", "translate to English", "精翻", "快翻", "refined translation", "proofread translation", "去掉AI味", "AIっぽさを消して" — or provides a Japanese/English file or URL with translation intent.
+description: Context-aware Japanese↔English translation with three modes (quick/normal/refined), eight context profiles (academic, business, technical, official, literary, marketing, casual, subtitle), keigo/register control, and glossary consistency. Use when the user asks to translate between Japanese and English — "翻訳して", "英訳", "和訳", "日本語にして", "英語にして", "日英翻译", "英日翻译", "翻成日文", "翻成日语", "翻成英文", "翻成英语", "帮我翻译", "translate to Japanese", "translate to English", "精翻", "快翻", "refined translation", "proofread translation", "去掉AI味", "AIっぽさを消して" — or provides a Japanese/English file or URL with translation intent.
 version: 1.1.0
 ---
 
@@ -51,13 +51,42 @@ Check these paths in order; the first found wins:
 | Result | Action |
 |---|---|
 | Found | Read and apply. On first use in a session, say once: "Using preferences from [path]." |
-| Not found | Run first-time setup (references/config/first-time-setup.md). Ask all questions in ONE call, write EXTEND.md, confirm the path, then continue. If no user is present, use Defaults and say so. |
+| Not found | Do not stop to ask. Translate with Defaults and whatever the request says, then offer first-time setup **after** delivering the translation (references/config/first-time-setup.md). If no user is present, use Defaults and say so in `01-analysis.md`. |
 
 Schema: references/config/extend-schema.md
 
+## Reading the Request
+
+Flags are optional. Most requests arrive as plain sentences in Chinese, Japanese, or English, and the skill reads every setting it can from them. Precedence: explicit flag > what the request says > EXTEND.md > context-profile defaults > SKILL.md Defaults.
+
+**Read intent, not keywords.** The phrases below are examples of each intent, not a closed list; recognize paraphrases in any of the three languages.
+
+| Setting | What to listen for | Examples → result |
+|---|---|---|
+| Direction | Named target language; otherwise the source language decides | "翻成日语" / "日本語にして" / "into Japanese" → EN→JA |
+| Mode: quick | Speed, gist, low stakes | "快翻", "大概意思", "随便翻一下", "ざっくり", "とりあえず", "just the gist" → quick |
+| Mode: refined | Submission, publication, high stakes, care | "精翻", "认真翻", "要交的", "要发表", "很重要", "丁寧に", "提出用", "公開する", "polished", "for publication" → refined |
+| Context | Purpose, channel, or destination | "论文/报告/摘要", "授業の課題", "for my thesis" → `academic`; "发给教授/学校事务", "先生へのメール" → `business` (sonkei-kenjo); "给客户/合作方", "取引先", "client" → `business`; "README/文档/界面文字" → `technical`; "在留/签证/区役所/合同", "契約書", "visa form" → `official`; "小说/散文/台词", "小説" → `literary`; "广告/宣传/发小红书/X 上发帖", "告知文", "landing page" → `marketing`; "发给朋友/LINE/群聊", "友達に" → `casual`; "字幕/演讲稿/PPT", "スライド", "subtitles" → `subtitle` |
+| Relationship and keigo | Who reads it, and their relation to the user | "老师/教授/上司/面试官/取引先" → `sonkei-kenjo`; "同学/同事" → `teinei`; "朋友/家人" → `none` |
+| Audience | Who will read the translation | "给日本老师看", "for general readers", "社内向け" → `audience` |
+| Japanese style | Explicit request | "用敬体/です・ます", "だ・である調で", "常体" → `ja_style` |
+| English variant | Explicit request | "英式英语", "British spelling", "イギリス英語" → `en_variant: UK` |
+| AI tone | Request to remove AI flavor | "去掉AI味", "不要像AI写的", "AIっぽさを消して", "make it sound less AI" → `humanize: rewrite` |
+| Notes | Explicit request | "不要加注释", "訳注なしで", "no translator's notes" → `notes: none` |
+
+**When the request and the text disagree,** the request wins for purpose and audience (a casual-sounding source that the user says is "for my report" is translated as `academic`), and the text wins for facts about itself (genre, existing formatting).
+
+**Ask only when it matters.** If a setting the request leaves open would change the output substantially and cannot be read from the text (e.g., an email whose recipient is unknown: friend or professor?), ask one short question before translating. Otherwise decide and move on.
+
+**Echo what was understood.** Start every reply that delivers a translation with one line in the user's language listing the settings in effect, marking those read from the request, for example:
+
+`识别为：英→日 · academic（来自"要交给老师"）· だ・である · refined（来自"认真翻"）· AI 腔：guard`
+
+The user can correct any item in one reply ("改成 business"), and the skill re-runs from the step that setting affects.
+
 ## Defaults
 
-EXTEND.md overrides these; flags in the request override EXTEND.md.
+EXTEND.md overrides these; flags and the request's own wording override EXTEND.md (see Reading the Request).
 
 | Setting | Default | EXTEND.md key | Flag | Notes |
 |---|---|---|---|---|
@@ -81,10 +110,7 @@ EXTEND.md overrides these; flags in the request override EXTEND.md.
 | Normal (default) | Analyze → Translate | Articles, reports, coursework, emails that matter |
 | Refined | Analyze → Draft → Critique → Revise → Polish | Publication, submission, anything formal or public |
 
-Auto-detection from the request:
-- "快翻", "ざっくり", "quick", "直接翻译", "とりあえず" → quick
-- "精翻", "丁寧に", "提出用", "publication", "proofread", "refined" → refined
-- otherwise → normal
+The mode is read from the request's intent (see Reading the Request); with no signal, use normal. Very short inputs (one or two sentences, a chat message) default to quick unless the request signals high stakes.
 
 After normal mode, end with: "Translation saved. Reply **继续润色 / 推敲して / refine** to run critique and polish." If the user does, continue with refined Steps 4–6 on the existing output.
 
@@ -199,7 +225,7 @@ Final translation: `translation.md`. Then:
 1. **Image text check.** List images likely containing source-language text (screenshots, charts, slides, covers). Reminder list only; never edit images unless asked.
 2. **Open questions.** If the analysis or critique recorded unresolved assumptions (e.g., unstated subject, ambiguous referent, name readings), list at most five under "Please confirm".
 
-Summary:
+Summary (after the settings line from Reading the Request):
 
 ```
 **Translation complete** ({mode} mode)

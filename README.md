@@ -47,6 +47,8 @@ Translate lecture.srt into Japanese --context subtitle
 英訳して、AIっぽさも消して --humanize rewrite
 ```
 
+No flags are needed: describe the purpose in your own words ("this goes to my professor", "just the gist", "for publication") in English, Japanese, or Chinese, and the skill reads the context, keigo level, and mode from it. Each reply opens with one line showing what it understood, so you can correct it right away.
+
 After a `normal` run, reply "refine" (or 推敲して / 继续润色) to run the critique and polish steps on the same output.
 
 Output goes to `{source}-{lang}/` next to the source file:
@@ -60,7 +62,7 @@ Output goes to `{source}-{lang}/` next to the source file:
 
 ## Configuration
 
-On first use the skill asks four questions and writes `~/.ja-en-translate/EXTEND.md`. Add your own terms there:
+Nothing needs to be set up first. After your first translation, the skill offers to save your usual settings to `~/.ja-en-translate/EXTEND.md` (four questions). Add your own terms there:
 
 ```yaml
 default_context: academic
