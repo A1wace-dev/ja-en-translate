@@ -38,7 +38,7 @@ Claude アプリでは、`skills/ja-en-translate` フォルダを zip に圧縮�
 
 ```text
 report.md を英訳して
-精翻 abstract.md --context academic
+abstract.md を提出用に丁寧に英訳して --context academic
 ざっくり訳して：The meeting has been moved to 3 p.m. tomorrow.
 この英文メールを日本語にして。取引先の部長宛てです
 lecture.srt を日本語字幕にして --context subtitle
